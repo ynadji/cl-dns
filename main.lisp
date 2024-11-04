@@ -12,7 +12,8 @@
 (defun registerable-domain? (domain)
   (and (valid-domain? domain)
        (ignore-errors
-        (multiple-value-bind (e2ld type) (cl-tld:get-domain-suffix (idna:to-unicode domain))
+        (multiple-value-bind (e2ld type)
+            (cl-tld:get-domain-suffix (idna:to-unicode domain)) ; PSL uses Unicode instead of Punycode.
           (declare (ignore e2ld))
           (not (eq type :unmanaged))))))
 
@@ -51,13 +52,15 @@
   (%add-domain trie (get-domain-parts domain)))
 
 (defun contains? (trie domain)
-  (let ((domain-parts (get-domain-parts domain)))
-    (loop for dp in domain-parts
+  (let* ((domain-parts (get-domain-parts domain))
+         (num-parts (length domain-parts)))
+    (loop for dp in domain-parts for i from 1
           while (setf trie (gethash dp trie)) do
             (ax:if-let ((type (or (gethash :wildcard trie)
                                   (gethash :zone-cut trie))))
-              (return-from contains? type)))
+              (when (or (eq type :wildcard)
+                        (< i num-parts)) ; :ZONE-CUT must have at least one more label.
+               (return-from contains? type))))
     (when trie
-      (cond ((gethash :leaf trie) :leaf)
-            ((gethash :wildcard trie) :wildcard)
-            ((gethash :zone-cut trie) :zone-cut)))))
+      (or (gethash :leaf trie)
+          (gethash :wildcard trie)))))
