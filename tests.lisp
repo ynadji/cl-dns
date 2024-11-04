@@ -12,15 +12,15 @@
 (def-suite tests)
 (in-suite tests)
 
-(test valid?
-  (is (valid? "google.com"))
-  (is (not (valid? "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-too-long.com")))
-  (is (not (valid? "!@#$%^&*().com")))
-  (is (valid? "foo.bar.baz.biz.faketld"))
-  (is (valid? "cAsEsHoUlNdNoTmAtTeR.com"))
-  (is (not (valid? "-cantstartwithahyphentho.com")))
-  (is (valid? "underscores_are_fine_chars.com"))
-  (is (valid? "_are_fine_chars.com")))
+(test valid-domain?
+  (is (valid-domain? "google.com"))
+  (is (not (valid-domain? "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-too-long.com")))
+  (is (not (valid-domain? "!@#$%^&*().com")))
+  (is (valid-domain? "foo.bar.baz.biz.faketld"))
+  (is (valid-domain? "cAsEsHoUlNdNoTmAtTeR.com"))
+  (is (not (valid-domain? "-cantstartwithahyphentho.com")))
+  (is (valid-domain? "underscores_are_fine_chars.com"))
+  (is (valid-domain? "_are_fine_chars.com")))
 
 (test registerable-domain?
   (is (registerable-domain? "foo.com"))

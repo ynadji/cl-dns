@@ -2,7 +2,7 @@
 
 ;; change trie to a struct
 
-(defun valid? (domain)
+(defun valid-domain? (domain)
   (let ((domain (idna:to-ascii domain)))
    (and (not (str:empty? domain))
         (< (length (str:replace-all "." "" domain)) 256)
@@ -10,7 +10,7 @@
         (cl-ppcre:scan "^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\\._]?$" domain))))
 
 (defun registerable-domain? (domain)
-  (and (valid? domain)
+  (and (valid-domain? domain)
        (ignore-errors
         (multiple-value-bind (e2ld type) (cl-tld:get-domain-suffix (idna:to-unicode domain))
           (declare (ignore e2ld))
