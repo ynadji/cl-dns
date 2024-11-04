@@ -51,7 +51,7 @@
 (defun add-domain (trie domain)
   (%add-domain trie (get-domain-parts domain)))
 
-(defun contains? (trie domain)
+(defun contains-domain? (trie domain)
   (let* ((domain-parts (get-domain-parts domain))
          (num-parts (length domain-parts)))
     (loop for dp in domain-parts for i from 1
@@ -60,7 +60,7 @@
                                   (gethash :zone-cut trie))))
               (when (or (eq type :wildcard)
                         (< i num-parts)) ; :ZONE-CUT must have at least one more label.
-               (return-from contains? type))))
+               (return-from contains-domain? type))))
     (when trie
       (or (gethash :leaf trie)
           (gethash :wildcard trie)))))
