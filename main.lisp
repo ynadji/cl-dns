@@ -1,15 +1,18 @@
 (in-package :cl-dns)
 
+;; change trie to a struct
+
 (defun valid? (domain)
-  (and (not (str:empty? domain))
-       (< (length (str:replace-all "." "" domain)) 256)
-       (not (ignore-errors (netaddr:make-ip-address domain)))
-       (cl-ppcre:scan "^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\\._]?$" domain)))
+  (let ((domain (idna:to-ascii domain)))
+   (and (not (str:empty? domain))
+        (< (length (str:replace-all "." "" domain)) 256)
+        (not (ignore-errors (netaddr:make-ip-address domain)))
+        (cl-ppcre:scan "^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\\._]?$" domain))))
 
 (defun registerable-domain? (domain)
-  (and (valid? (idna:to-ascii domain))
+  (and (valid? domain)
        (ignore-errors
-        (multiple-value-bind (e2ld type) (cl-tld:get-domain-suffix domain)
+        (multiple-value-bind (e2ld type) (cl-tld:get-domain-suffix (idna:to-unicode domain))
           (declare (ignore e2ld))
           (not (eq type :unmanaged))))))
 
