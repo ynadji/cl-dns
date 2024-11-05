@@ -12,6 +12,11 @@
 (def-suite tests)
 (in-suite tests)
 
+(test normalize-domain
+  (is (string= "google.com" (normalize-domain "  GoOgLe.com. ")))
+  (without-normalization
+   (is (not (string= "google.com" (normalize-domain "  GoOgLe.com. "))))))
+
 (test valid-domain?
   (is (valid-domain? "google.com"))
   (is (not (valid-domain? "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-too-long.com")))
@@ -74,10 +79,12 @@
 (defun random-label ()
   (coerce (loop repeat 41 collect (elt "abcdefghijklmnopqrstuvwxyz" (random 26))) 'simple-string))
 
-(defvar *trie* (make-trie "www.google.com" "+.nadji.us" "*.org" "foo.bar.baz.com"))
+(defvar *trie* (make-trie "   www.google.com." "+.NADJI.us   " "  *.org. " "foo.BAR.baz.COM"))
+(defvar *unnormalized-trie* (without-normalization (make-trie "   www.google.com." "+.NADJI.us   " "  *.org. " "foo.BAR.baz.COM")))
 
 (test contains-domain?
   (is (contains-domain? *trie* "www.google.com"))
+  (is (contains-domain? *trie* "WWW.GOOGLE.COM."))
   (is (not (contains-domain? *trie* "google.com")))
   (is (not (contains-domain? *trie* "foo.google.com")))
   (is (contains-domain? *trie* "yacin.nadji.us"))
@@ -94,4 +101,16 @@
   (is (not (contains-domain? *trie* "com.baz.bar.foo")))
   (is (not (contains-domain? *trie* "baz.bar.foo")))
   (is (not (contains-domain? *trie* "foo.baz.bar.com")))
-  (is (not (contains-domain? *trie* "bing.com"))))
+  (is (not (contains-domain? *trie* "bing.com")))
+
+  ;; unnormalized trie
+  (is (not (contains-domain? *unnormalized-trie* "www.google.com")))
+  (is (not (contains-domain? *unnormalized-trie* "WWW.GOOGLE.COM.")))
+  (is (not (contains-domain? *unnormalized-trie* "yacin.nadji.us")))
+  (is (not (contains-domain? *unnormalized-trie* (format nil "~a.nadji.us" (random-label)))))
+  (is (not (contains-domain? *unnormalized-trie* (format nil "~a.~a.nadji.us" (random-label) (random-label)))))
+  (is (not (contains-domain? *unnormalized-trie* "org")))
+  (is (not (contains-domain? *unnormalized-trie* (format nil "~a.org" (random-label)))))
+  (is (not (contains-domain? *unnormalized-trie* (format nil "~a.~a.org" (random-label) (random-label)))))
+  (is (not (contains-domain? *unnormalized-trie* (format nil "~a.~a.~a.org" (random-label) (random-label) (random-label)))))
+  (is (not (contains-domain? *unnormalized-trie* "foo.bar.baz.com")))

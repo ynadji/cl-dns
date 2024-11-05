@@ -2,4 +2,4 @@
 (defpackage :cl-dns
   (:use :cl)
   (:local-nicknames (:ax :alexandria))
-  (:export :valid-domain? :registerable-domain? :make-trie :contains-domain?))
+  (:export :valid-domain? :registerable-domain? :make-trie :contains-domain? :normalize-domain :without-normalization))

@@ -1,5 +1,9 @@
 (in-package :cl-dns)
 
+;; are these a good idea?
+(defvar *normalize* t "Normalize all domain names prior to adding to a DOMAIN-TRIE or when checking membership. Normalization removes any whitespace or trailing #\. and lowercases the domain. Defaults to T. You almost certainly want this unless you're doing something weird.")
+(defvar *normalize-chars* (append str:*whitespaces* '(#\.)))
+
 (defstruct (domain-trie (:print-object print-domain-trie))
   (trie (make-hash-table :test #'equal) :type hash-table)
   (num-leafs 0 :type integer)
@@ -13,6 +17,16 @@
             (domain-trie-num-leafs dt)
             (domain-trie-num-wildcards dt)
             (domain-trie-num-zone-cuts dt))))
+
+(defmacro without-normalization (&rest body)
+  "Do not use NORMALIZE-DOMAIN for all forms in BODY."
+  `(let ((*normalize* nil))
+     ,@body))
+
+(defun normalize-domain (domain)
+  (if *normalize*
+      (str:trim (str:downcase domain) :char-bag *normalize-chars*)
+      domain))
 
 (defun valid-domain? (domain)
   "Returns T if DOMAIN is syntactically valid, otherwise NIL."
@@ -36,12 +50,13 @@ describing the failure condition from CL-TLD."
           (not (eq type :unmanaged))))))
 
 (defun get-domain-parts (domain)
-  (let ((parts (str:split #\. domain)))
-    (when (string= "*" (first parts))
-      (setf (first parts) :wildcard))
-    (when (string= "+" (first parts))
-      (setf (first parts) :zone-cut))
-    (reverse parts)))
+  (let ((domain (normalize-domain domain)))
+   (let ((parts (str:split #\. domain)))
+     (when (string= "*" (first parts))
+       (setf (first parts) :wildcard))
+     (when (string= "+" (first parts))
+       (setf (first parts) :zone-cut))
+     (reverse parts))))
 
 (defun %add-domain (trie domain-parts &optional (added? nil))
   (if (null domain-parts)
