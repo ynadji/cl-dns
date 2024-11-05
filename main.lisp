@@ -60,18 +60,18 @@ describing the failure condition from CL-TLD."
 
 (defun add-domain (trie domain)
   "Add DOMAIN to the TRIE. Modifies TRIE in-place and returns (VALUES TRIE ADDED?) where ADDED? is NIL if it was already in the TRIE, otherwise returns T."
-  (values trie
-          (%add-domain (domain-trie-trie trie) (get-domain-parts domain))))
+  (let ((added? (%add-domain (domain-trie-trie trie) (get-domain-parts domain))))
+    (when added?
+      (case (char domain 0)
+        (#\+ (incf (domain-trie-num-wildcards trie)))
+        (#\* (incf (domain-trie-num-zone-cuts trie)))
+        (otherwise (incf (domain-trie-num-leafs trie)))))
+    (values trie added?)))
 
 (defun make-trie (&rest domains)
   "Creates and returns a TRIE that contains all DOMAINS."
   (let ((trie (make-domain-trie)))
-    (loop for domain in domains do
-      (ax:when-let ((added? (nth-value 1 (add-domain trie domain))))
-        (case (char domain 0)
-          (#\+ (incf (domain-trie-num-wildcards trie)))
-          (#\* (incf (domain-trie-num-zone-cuts trie)))
-          (otherwise (incf (domain-trie-num-leafs trie))))))
+    (loop for domain in domains do (add-domain trie domain))
     trie))
 
 (defun contains-domain? (trie domain)
