@@ -1,6 +1,18 @@
 (in-package :cl-dns)
 
-;; change trie to a struct
+(defstruct (domain-trie (:print-object print-domain-trie))
+  (trie (make-hash-table :test #'equal) :type hash-table)
+  (num-leafs 0 :type integer)
+  (num-wildcards 0 :type integer)
+  (num-zone-cuts 0 :type integer))
+
+(defun print-domain-trie (dt stream)
+  (print-unreadable-object (dt stream :type t)
+    (format stream "<TLDs: ~a, FQDNs: ~a, *: ~a, +: ~a>"
+            (hash-table-count (domain-trie-trie dt))
+            (domain-trie-num-leafs dt)
+            (domain-trie-num-wildcards dt)
+            (domain-trie-num-zone-cuts dt))))
 
 (defun valid-domain? (domain)
   "Returns T if DOMAIN is syntactically valid, otherwise NIL."
@@ -31,20 +43,11 @@ describing the failure condition from CL-TLD."
       (setf (first parts) :zone-cut))
     (reverse parts)))
 
-(defun make-trie (&rest domains)
-  "Creates and returns a TRIE that contains all DOMAINS."
-  (let ((trie (make-hash-table :test #'equal)))
-    (loop for domain in domains do
-      (add-domain trie domain))
-    trie))
-
-(defun %add-domain (trie domain-parts &optional (original-trie nil) (added? nil))
-  (unless original-trie
-    (setf original-trie trie))
+(defun %add-domain (trie domain-parts &optional (added? nil))
   (if (null domain-parts)
-      (values original-trie added?)
+      added?
       (ax:if-let ((child (gethash (first domain-parts) trie)))
-        (%add-domain child (rest domain-parts) original-trie added?)
+        (%add-domain child (rest domain-parts) added?)
         (let ((child (make-hash-table :test #'equal)))
           (cond ((and (= 1 (length domain-parts))
                       (not (keywordp (first domain-parts))))
@@ -53,17 +56,30 @@ describing the failure condition from CL-TLD."
                       (keywordp (first domain-parts)))
                  (setf child (first domain-parts))))
           (setf (gethash (first domain-parts) trie) child)
-          (%add-domain child (rest domain-parts) original-trie t)))))
+          (%add-domain child (rest domain-parts) t)))))
 
 (defun add-domain (trie domain)
   "Add DOMAIN to the TRIE. Modifies TRIE in-place and returns (VALUES TRIE ADDED?) where ADDED? is NIL if it was already in the TRIE, otherwise returns T."
-  (%add-domain trie (get-domain-parts domain)))
+  (values trie
+          (%add-domain (domain-trie-trie trie) (get-domain-parts domain))))
+
+(defun make-trie (&rest domains)
+  "Creates and returns a TRIE that contains all DOMAINS."
+  (let ((trie (make-domain-trie)))
+    (loop for domain in domains do
+      (ax:when-let ((added? (nth-value 1 (add-domain trie domain))))
+        (case (char domain 0)
+          (#\+ (incf (domain-trie-num-wildcards trie)))
+          (#\* (incf (domain-trie-num-zone-cuts trie)))
+          (otherwise (incf (domain-trie-num-leafs trie))))))
+    trie))
 
 (defun contains-domain? (trie domain)
   "Checks if TRIE contains DOMAIN. Returns one of :LEAF, :WILDCARD, or :ZONE-CUT to
 flag the type of match that was seen."
   (let* ((domain-parts (get-domain-parts domain))
-         (num-parts (length domain-parts)))
+         (num-parts (length domain-parts))
+         (trie (domain-trie-trie trie)))
     (loop for dp in domain-parts for i from 1
           while (setf trie (gethash dp trie)) do
             (ax:if-let ((type (or (gethash :wildcard trie)
